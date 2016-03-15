@@ -6,7 +6,7 @@ rga$methods(
                            sort = "", filters = "", segment = "", fields = "",
                            start = 1, max, messages = TRUE,  batch, walk = FALSE,
                            output.raw, output.formats, return.url = FALSE, rbr = FALSE, envir = .GlobalEnv,
-                           samplingLevel = "DEFAULT") {
+                           samplingLevel = "HIGHER_PRECISION") {
 
             if (missing(ids)) {
                 stop("please enter a profile id")
