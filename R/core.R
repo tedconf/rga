@@ -30,18 +30,14 @@ rga$methods(
                     }
                 } else {
                     if (batch > 10000) {
-                        # as per https://developers.google.com/analytics/devguides/reporting/core/v2/gdataReferenceDataFeed#maxResults
-                        stop("batch size can max be set to 10000")
+                        # as per https://developers.google.com/analytics/devguides/reporting/core/v3/reference#maxResults
+                        stop("batch size can be set to max of 10000")
                     }
                 }
 
-                if (missing(max)) {
-                    adjustMax <- TRUE
-                    # arbitrary target, adjust later
-                    max <- 10000
-                } else {
-                    adjustMax <- FALSE
-                }
+                adjustMax <- TRUE
+                # arbitrary target, adjust later
+                max <- 10000
             }
 
             # ensure that profile id begings with 'ga:'
@@ -120,7 +116,7 @@ rga$methods(
             if (ga.data$containsSampledData == "TRUE") {
                 isSampled <- TRUE
                 if (!walk) {
-                    message(sprintf("Notice: Data set sampled from %s sessions (%d%% of all sessions)", 
+                    message(sprintf("Notice: Data set sampled from %s sessions (%d%% of all sessions)",
                                     format(as.numeric(ga.data$sampleSize), big.mark=",", scientific=FALSE),
                                     round((as.numeric(ga.data$sampleSize) / as.numeric(ga.data$sampleSpace) * 100))))
                 }
@@ -138,12 +134,12 @@ rga$methods(
             # check if all data is being extracted
             if (NROW(ga.data$rows) < ga.data$totalResults && (messages || isBatch)) {
                 if (!isBatch) {
-                    message(paste("Only pulling", length(ga.data$rows), "observations of", ga.data$totalResults, "total (set batch = TRUE to get all observations)"))
+                    message(paste("Only pulling", NROW(ga.data$rows), "observations of", ga.data$totalResults, "total (set batch = TRUE to get all observations)"))
                 } else {
                     if (adjustMax) {
                         max <- ga.data$totalResults
                     }
-                    message(paste("Pulling", max, "observations in batches of", batch))
+                    message(paste("Batch: pulling", max, "observations in batches of", batch))
                     # pass variables to batch-function
                     return(.self$getDataInBatches(total = ga.data$totalResults, max = max, batchSize = batch,
                                                   ids = ids, start.date = start.date, end.date = end.date, date.format = date.format,
@@ -161,10 +157,8 @@ rga$methods(
             if (!inherits(ga.data$rows, "matrix") && !rbr) {
                 stop(paste("no results:", ga.data$totalResults))
             } else if (!inherits(ga.data$rows, "matrix") && rbr) {
-                # return data.frame with NA, if row-by-row setting is true
-                row <- as.data.frame(matrix(NA, ncol = length(ga.headers$name), nrow = 1))
-                colnames(row) <- ga.headers$name
-                return(row)
+              # If row-by-row is true, return NULL
+              return(NULL)
             }
 
             # convert to data.frame
@@ -180,7 +174,7 @@ rga$methods(
             } else {
                 attr(ga.data.df, "containsSampledData") <- FALSE
             }
-            
+
             # find formats
             formats <- ga.headers
 
@@ -220,7 +214,7 @@ rga$methods(
             return(ga.data.df)
         },
         getFirstDate = function(ids) {
-            first <- .self$getData(ids, start.date = "2005-01-01", filters = "ga:sessions!=0", max = 1, messages = FALSE)
+            first <- .self$getData(ids, start.date = "2005-01-01", filters = "ga:hits!=0", max = 1, messages = FALSE)
             return(first$date)
         },
         getDataInBatches = function(batchSize, total, ids, start.date, end.date, date.format,
@@ -237,11 +231,11 @@ rga$methods(
                     end <- max
                 }
 
-                message(paste("Run (", i + 1, "/", runs.max, "): observations [", start, ";", end, "]. Batch size: ", batchSize, sep = ""))
+                message(paste("Batch: run (", i + 1, "/", runs.max, "), observations [", start, ":", end, "]. Batch size: ", batchSize, sep = ""))
                 chunk <- .self$getData(ids = ids, start.date = start.date, end.date = end.date, metrics = metrics, dimensions = dimensions, sort = sort,
                                        filters = filters, segment = segment, fields = fields, date.format = date.format, envir = envir, messages = FALSE, return.url = FALSE,
                                        batch = FALSE, start = start, max = batchSize, samplingLevel = samplingLevel)
-                message(paste("Received:", nrow(chunk), "observations"))
+                message(paste("Batch: received", NROW(chunk), "observations"))
                 chunk.list[[i + 1]] <- chunk
             }
             return(do.call(rbind, chunk.list, envir = envir))
@@ -256,12 +250,12 @@ rga$methods(
             for (i in 0:(walks.max)) {
                 date <- format(as.Date(start.date) + i, "%Y-%m-%d")
 
-                message(paste("Run (", i + 1, "/", walks.max + 1, "): for date ", date, sep = ""))
+                message(paste("Walk: run (", i + 1, "/", walks.max + 1, ") for date ", date, sep = ""))
                 chunk <- .self$getData(ids = ids, start.date = date, end.date = date, date.format = date.format,
                                        metrics = metrics, dimensions = dimensions, sort = sort, filters = filters,
                                        segment = segment, fields = fields, envir = envir, max = max,
                                        rbr = TRUE, messages = FALSE, return.url = FALSE, batch = batch, samplingLevel = samplingLevel)
-                message(paste("Received:", nrow(chunk), "observations"))
+                message(paste("Walk: received", NROW(chunk), "observations"))
                 chunk.list[[i + 1]] <- chunk
             }
 
